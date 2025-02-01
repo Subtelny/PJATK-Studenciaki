@@ -1,0 +1,79 @@
+<div class="custom-exchange-container">
+  <div class="header">
+    <h1 class="custom-title">
+      Lista wymian
+    </h1>
+    <p>
+      <span
+        class="custom-meta"><strong>Przeglądaj oferty wymiany</strong></span>
+    </p>
+  </div>
+
+  <div class="custom-search-bar">
+    <input id="search-input" class="custom-search-input"
+           type="text"
+           name="search"
+           placeholder="Wyszukaj uczelnię..."
+           value="{{ app.request.query.get('search')|default('') }}">
+
+    <select id="sort-select" class="custom-search-select" name="sort">
+      <option
+        value="exchange_start_date" {{ app.request.query.get('sort') == 'exchange_start_date' ? 'selected' : '' }}>
+        Data rozpoczęcia
+      </option>
+      <option
+        value="exchange_ranking" {{ app.request.query.get('sort') == 'exchange_ranking' ? 'selected' : '' }}>
+        Ranking
+      </option>
+    </select>
+
+    <select id="order-select" class="custom-search-select" name="order">
+      <option
+        value="ASC" {{ app.request.query.get('order') == 'ASC' ? 'selected' : '' }}>
+        Rosnąco
+      </option>
+      <option
+        value="DESC" {{ app.request.query.get('order') == 'DESC' ? 'selected' : '' }}>
+        Malejąco
+      </option>
+    </select>
+
+    <button class="custom-button" type="button" onclick="applyFilters()">
+      Filtruj
+    </button>
+
+    <script>
+      function applyFilters() {
+        var search = document.getElementById('search-input').value;
+        var sort = document.getElementById('sort-select').value;
+        var order = document.getElementById('order-select').value;
+        var params = new URLSearchParams(window.location.search);
+        params.set('search', search);
+        params.set('sort', sort);
+        params.set('order', order);
+        window.location.search = params.toString();
+      }
+    </script>
+  </div>
+
+  {% for item in items %}
+    <div class="custom-exchange-item">
+      <div class="custom-details">
+        <span class="custom-name">{{ item.node.exchange_location.value }}</span>
+      </div>
+      <div class="custom-details">
+        <p class="custom-name">{{ item.node.label }}</p>
+        <p class="custom-meta">
+          {{ item.node.exchange_start_date.value|date('Y-m-d H:i') }} -
+          {{ item.node.exchange_end_date.value|date('Y-m-d H:i') }}
+        </p>
+      </div>
+      <div class="custom-actions">
+        <a href="{{ path('entity.node.canonical', {'node': item.node.id()}) }}"
+           class="custom-button">Szczegóły</a>
+      </div>
+    </div>
+  {% endfor %}
+
+  {{ pager }}
+</div>

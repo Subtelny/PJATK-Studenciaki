@@ -1,0 +1,92 @@
+<div class="custom-applications-container">
+  <h2 class="custom-title">
+    Przeglądaj złożone aplikacje
+  </h2>
+  <div class="custom-search-bar">
+    <input id="search-input" class="custom-search-input"
+           type="text"
+           name="search"
+           placeholder="Wyszukaj aplikację..."
+           value="{{ app.request.query.get('search')|default('') }}">
+
+    <select id="sort-select" class="custom-search-select" name="sort">
+      <option
+        value="created" {{ app.request.query.get('sort') == 'created' ? 'selected' : '' }}>
+        Data złożenia
+      </option>
+      <option
+        value="status" {{ app.request.query.get('sort') == 'status' ? 'selected' : '' }}>
+        Status
+      </option>
+    </select>
+
+    <select id="order-select" class="custom-search-select" name="order">
+      <option
+        value="DESC" {{ app.request.query.get('order') == 'DESC' ? 'selected' : '' }}>
+        Malejąco
+      </option>
+      <option
+        value="ASC" {{ app.request.query.get('order') == 'ASC' ? 'selected' : '' }}>
+        Rosnąco
+      </option>
+    </select>
+
+    <button class="custom-button" type="button" onclick="applyFilters()">
+      Filtruj
+    </button>
+
+    <script>
+      function applyFilters() {
+        var search = document.getElementById('search-input').value;
+        var sort = document.getElementById('sort-select').value;
+        var order = document.getElementById('order-select').value;
+        var params = new URLSearchParams(window.location.search);
+        params.set('search', search);
+        params.set('sort', sort);
+        params.set('order', order);
+        window.location.search = params.toString();
+      }
+    </script>
+  </div>
+
+  {% for item in items %}
+    {% set status_translation = {
+      'waiting': 'Oczekuje',
+      'approved': 'Zatwierdzone',
+      'declined': 'Odrzucone'
+    } %}
+    {% set status_class = {
+      'waiting': 'pending',
+      'approved': 'accept',
+      'declined': 'declined'
+    } %}
+    {% set raw_value = item.exchange_application.status.value %}
+
+    <div class="custom-card">
+      <div class="custom-details">
+        <h3 class="custom-name">
+          {{ item.exchange_application.firstname.value ~ ' ' ~ item.exchange_application.lastname.value }}
+        </h3>
+        <p class="custom-meta">
+          <strong>Data złożenia:</strong>
+          {{ item.exchange_application.created.value|date('Y-m-d H:i') }}
+        </p>
+        <p class="custom-meta">
+          <strong>Status:</strong>
+          <span
+            class="custom-status {{ status_class[raw_value] is defined ? status_class[raw_value] : 'pending' }}">
+            {{ status_translation[raw_value] is defined ? status_translation[raw_value] : raw_value }}
+          </span>
+        </p>
+      </div>
+      <p>
+        <a class="custom-button"
+           href="{{ path('entity.exchange_application.canonical', {'exchange_application': item.entity_id}) }}">
+          Szczegóły
+        </a>
+      </p>
+    </div>
+  {% endfor %}
+
+  {{ pager }}
+</div>

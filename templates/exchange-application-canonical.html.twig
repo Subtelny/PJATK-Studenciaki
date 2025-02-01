@@ -1,0 +1,127 @@
+{% set status_translation = {
+  'waiting': 'Oczekuje',
+  'approved': 'Zatwierdzone',
+  'declined': 'Odrzucone'
+} %}
+
+{% set status_class = {
+  'waiting': 'pending',
+  'approved': 'accept',
+  'declined': 'declined'
+} %}
+
+{% set raw_value = exchange_application.status.value %}
+
+{% if can_edit_exchange_offer %}
+  <div class="custom-applications-container">
+    <p>
+      &nbsp;
+    </p>
+    <h1 class="custom-title">
+      Szczegóły aplikacji
+    </h1>
+    <h2 class="custom-subtitle">
+      Podstawowe informacje
+    </h2>
+    <ul class="custom-info-list">
+      <li>
+        <strong>Aplikuje do:</strong> {{ referenced_entity_link }}
+      </li>
+      <li>
+        <strong>Imię i
+          nazwisko:</strong> {{ exchange_application.firstname.value ~ ' ' ~ exchange_application.lastname.value }}
+      </li>
+      <li>
+        <strong>Status:</strong> <span
+          class="custom-status {{ status_class[raw_value] is defined ? status_class[raw_value] : 'pending' }}">{{ status_translation[raw_value] is defined
+          ? status_translation[raw_value]
+          : raw_value }}
+        </span>
+      </li>
+      <li>
+        <strong>Data
+          złożenia:</strong> {{ exchange_application.created.value|date('Y-m-d H:i') }}
+      </li>
+      <li>
+        <strong>Ostatnia
+          modyfikacja:</strong> {{ exchange_application.changed.value|date('Y-m-d H:i') }}
+      </li>
+      <li>
+        <strong>Załączniki:</strong>
+        {{ files }}
+      </li>
+    </ul>
+    <div class="custom-actions">
+      {% if entity_id %}
+        <a
+          href="{{ path('studenciaki.exchange_application.approve', {'exchange_application': entity_id}) }}"
+          class="custom-button accept">Zaakceptuj</a>
+        <a
+          href="{{ path('studenciaki.exchange_application.decline', {'exchange_application': entity_id}) }}"
+          class="custom-button reject">Odrzuć</a>
+        <a
+          href="{{ path('studenciaki.exchange_application.waiting', {'exchange_application': entity_id}) }}"
+          class="custom-button pending">Oczekujące</a>
+      {% endif %}
+    </div>
+    <div class="custom-info-form">
+      <h2 class="custom-subtitle">
+        Dodaj informację dla studenta
+      </h2>
+      {{ comments_section }}
+    </div>
+  </div>
+{% else %}
+
+  <div class="custom-applications-container">
+    <p>
+      &nbsp;
+    </p>
+    <h1 class="custom-title">
+      Szczegóły aplikacji
+    </h1>
+    <h2 class="custom-subtitle">
+      Podstawowe informacje
+    </h2>
+    <ul class="custom-info-list">
+      <li>
+        <strong>Aplikuje do:</strong> {{ referenced_entity_link }}
+      </li>
+      <li>
+        <strong>Nazwa
+          aplikacji:</strong> {{ referenced_entity.exchange_uni_name.value }}
+        - {{ referenced_entity.exchange_field_type.value }}
+      </li>
+      <li>
+        <strong>Status:</strong> <span
+          class="custom-status {{ status_class[raw_value] is defined ? status_class[raw_value] : 'pending' }}">{{ status_translation[raw_value] is defined
+          ? status_translation[raw_value]
+          : raw_value }}
+        </span>
+      </li>
+      <li>
+        <strong>Data
+          złożenia:</strong> {{ exchange_application.created.value|date('Y-m-d H:i') }}
+      </li>
+      <li>
+        <strong>Ostatnia
+          modyfikacja:</strong> {{ exchange_application.changed.value|date('Y-m-d H:i') }}
+      </li>
+      <li>
+        <strong>Załączniki:</strong>
+        {{ files }}
+      </li>
+    </ul>
+    <a
+      href="{{ path('entity.exchange_application.edit_form', {'exchange_application': entity_id}) }}"
+      class="custom-button">Dodaj dokumenty
+    </a>
+
+    <div class="custom-info-form">
+      <h2 class="custom-subtitle">
+        Komentarze
+      </h2>
+      {{ comments_section }}
+    </div>
+  </div>
+{% endif %}

@@ -1,0 +1,73 @@
+<div class="custom-container">
+  <p>&nbsp;</p>
+  <h2 class="custom-title">
+    Śledź swoje <span style="color:var(--custom-primary);">postępy</span> i zarządzaj aplikacjami
+  </h2>
+  <div class="custom-search-bar">
+    <form method="get" action="">
+      <label>
+        <input class="custom-search-input" type="text"
+               name="search"
+               placeholder="Wyszukaj aplikację..."
+               value="{{ app.request.query.get('search')|default('') }}">
+      </label>
+      <label>
+        <select class="custom-search-select" name="sort">
+          <option value="created" {{ app.request.query.get('sort') == 'created' ? 'selected' : '' }}>
+            Data
+          </option>
+          <option value="status" {{ app.request.query.get('sort') == 'status' ? 'selected' : '' }}>
+            Status
+          </option>
+        </select>
+      </label>
+      <label>
+        <select class="custom-search-select" name="order">
+          <option value="DESC" {{ app.request.query.get('order') == 'DESC' ? 'selected' : '' }}>
+            Malejąco
+          </option>
+          <option value="ASC" {{ app.request.query.get('order') == 'ASC' ? 'selected' : '' }}>
+            Rosnąco
+          </option>
+        </select>
+      </label>
+      <button class="custom-button" type="submit">Filtruj</button>
+    </form>
+  </div>
+  {% for item in items %}
+    {% set status_translation = {
+      'waiting': 'Oczekuje',
+      'approved': 'Zatwierdzone',
+      'declined': 'Odrzucone'
+    } %}
+    {% set status_class = {
+      'waiting': 'pending',
+      'approved': 'accept',
+      'declined': 'declined'
+    } %}
+    {% set raw_value = item.exchange_application.status.value %}
+    <div class="custom-card">
+      <div class="custom-details">
+        <h3 class="custom-name">
+          {{ item.referenced_entity.title.value }}
+        </h3>
+        <p class="custom-meta">
+          <strong>Data złożenia:</strong> {{ item.exchange_application.created.value|date('Y-m-d H:i') }}
+        </p>
+        <p class="custom-meta">
+          <strong>Data modyfikacji:</strong> {{ item.exchange_application.changed.value|date('Y-m-d H:i') }}
+        </p>
+      </div>
+      <div class="custom-actions">
+        <span class="custom-status {{ status_class[raw_value] is defined ? status_class[raw_value] : 'pending' }}">
+          {{ status_translation[raw_value] is defined ? status_translation[raw_value] : raw_value }}
+        </span>
+        <a class="custom-button"
+           href="{{ path('entity.exchange_application.canonical', {'exchange_application': item.entity_id}) }}">
+          Szczegóły
+        </a>
+      </div>
+    </div>
+  {% endfor %}
+  {{ pager }}
+</div>
