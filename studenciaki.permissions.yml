@@ -1,0 +1,14 @@
+administer exchange_application:
+  title: 'Dostęp do wszystkich aplikacji wymian'
+  description: 'Pozwala na dostęp do wszystkich aplikacji wymian.'
+  restrict access: true
+
+manage exchange_application:
+  title: 'Zarządzaj aplikacjami wymian'
+  description: 'Pozwala edytować aplikacje wymian.'
+  restrict access: false
+
+manage own exchange_application:
+  title: 'Zarządzaj własnymi aplikacjami wymian'
+  description: 'Pozwala edytować aplikacje wymian.'
+  restrict access: false

@@ -1,0 +1,6 @@
+exchange_application.admin_menu:
+  title: 'Aplikacje Wymian'
+  description: 'Lista aplikacji wymian'
+  parent: system.admin_content
+  route_name: exchange_application.collection
+  weight: 10

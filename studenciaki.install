@@ -1,0 +1,492 @@
+<?php
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Entity\Entity\EntityViewDisplay;
+use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\Core\Entity\EntityBase;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Url;
+use Drupal\node\Entity\NodeType;
+use Drupal\user\Entity\Role;
+use Drupal\field\Entity\FieldStorageConfig;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\comment\Entity\CommentType;
+use Drupal\user\Entity\User;
+
+/**
+ * Implements hook_install().
+ *
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function studenciaki_install() {
+  addExchangeOfferNodeType();
+
+  $view_display = getExchangeOfferEntityViewDisplay();
+  $form_display = getExchangeOfferEntityFormDisplay();
+  $fields = getCustomFieldsToRegister();
+
+  foreach ($fields as $field) {
+    $field_storage_settings = [];
+    if ($field['type'] === 'datetime') {
+      $field_storage_settings = [
+        'datetime_type' => 'date',
+      ];
+    }
+
+    $field_storage = FieldStorageConfig::loadByName('node', $field['machine_name']);
+    if (!$field_storage) {
+      $storage_definition = [
+        'field_name' => $field['machine_name'],
+        'entity_type' => 'node',
+        'type' => $field['type'],
+      ];
+      if (!empty($field_storage_settings)) {
+        $storage_definition['settings'] = $field_storage_settings;
+      }
+      $field_storage = FieldStorageConfig::create($storage_definition);
+      $field_storage->save();
+    }
+
+    $field_config = FieldConfig::loadByName('node', 'exchange_offer', $field['machine_name']);
+    if (!$field_config) {
+      $field_config = FieldConfig::create([
+        'field_name' => $field['machine_name'],
+        'entity_type' => 'node',
+        'bundle' => 'exchange_offer',
+        'label' => $field['label'],
+        'required' => $field['required'],
+      ]);
+      $field_config->save();
+    }
+
+    $form_display->setComponent($field['machine_name'], [
+      'type' => $field['widget'],
+      'weight' => $field['weight'],
+    ]);
+
+    $formatter = 'string';
+    switch ($field['type']) {
+      case 'integer':
+        $formatter = 'number_integer';
+        break;
+      case 'datetime':
+        $formatter = 'datetime_default';
+        break;
+      case 'text_long':
+        $formatter = 'text_default';
+        break;
+    }
+    $view_display->setComponent($field['machine_name'], [
+      'label' => 'above',
+      'type' => $formatter,
+      'settings' => [],
+      'weight' => $field['weight'],
+    ]);
+  }
+  $form_display->save();
+  $view_display->save();
+
+  addStudentRole();
+  addRepresentativeRole();
+  addAuthenticatedRole();
+
+  studenciaki_create_exchange_application_base_table();
+  studenciaki_create_exchange_application_revision_table();
+}
+
+/**
+ * Implements studenciaki_post_update_12().
+ *
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function studenciaki_post_update_12(&$sandbox): void {
+  $comment_type_id = 'exchange_application_comment';
+  $existing = CommentType::load($comment_type_id);
+  if (!$existing) {
+    $comment_type = CommentType::create([
+      'id' => $comment_type_id,
+      'label' => 'Aplikacja wymiany komentarz',
+      'description' => 'Komentarz dla aplikacji wymiany',
+      'target_entity_type' => 'exchange_application',
+      'field_name' => 'exchange_application_comment',
+    ]);
+    $comment_type->save();
+  }
+}
+
+/**
+ * @return \Drupal\Core\Entity\Entity\EntityFormDisplay|\Drupal\Core\Entity\EntityBase|\Drupal\Core\Entity\EntityInterface
+ */
+function getExchangeOfferEntityFormDisplay(): EntityBase|EntityInterface|EntityFormDisplay {
+  $form_display = EntityFormDisplay::load('node.exchange_offer.default');
+  if (!$form_display) {
+    $form_display = EntityFormDisplay::create([
+      'targetEntityType' => 'node',
+      'bundle' => 'exchange_offer',
+      'mode' => 'default',
+      'status' => TRUE,
+    ]);
+  }
+  return $form_display;
+}
+
+/**
+ * @return \Drupal\Core\Entity\Entity\EntityViewDisplay|\Drupal\Core\Entity\EntityBase|\Drupal\Core\Entity\EntityInterface
+ */
+function getExchangeOfferEntityViewDisplay(): EntityBase|EntityViewDisplay|EntityInterface {
+  $view_display = EntityViewDisplay::load('node.exchange_offer.default');
+  if (!$view_display) {
+    $view_display = EntityViewDisplay::create([
+      'targetEntityType' => 'node',
+      'bundle' => 'exchange_offer',
+      'mode' => 'default',
+      'status' => TRUE,
+    ]);
+  }
+  return $view_display;
+}
+
+/**
+ * @return void
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function addExchangeOfferNodeType(): void {
+  $type = NodeType::load('exchange_offer');
+  if (!$type) {
+    $type = NodeType::create([
+      'type' => 'exchange_offer',
+      'name' => 'Exchange Offer',
+      'description' => 'Oferta wymiany studenckiej',
+    ]);
+    $type->save();
+  }
+}
+
+/**
+ * @return array[]
+ */
+function getCustomFieldsToRegister(): array {
+  return [
+    [
+      'machine_name' => 'exchange_uni_name',
+      'type' => 'string',
+      'label' => 'Nazwa uczelni',
+      'widget' => 'string_textfield',
+      'required' => TRUE,
+      'weight' => 0,
+    ],
+    [
+      'machine_name' => 'exchange_field_type',
+      'type' => 'string',
+      'label' => 'Kierunek studiów',
+      'widget' => 'string_textfield',
+      'required' => TRUE,
+      'weight' => 1,
+    ],
+    [
+      'machine_name' => 'exchange_ranking',
+      'type' => 'integer',
+      'label' => 'Ranking',
+      'widget' => 'number',
+      'required' => TRUE,
+      'weight' => 2,
+    ],
+    [
+      'machine_name' => 'exchange_ects',
+      'type' => 'integer',
+      'label' => 'Punkty ECTS',
+      'widget' => 'number',
+      'required' => TRUE,
+      'weight' => 3,
+    ],
+    [
+      'machine_name' => 'exchange_location',
+      'type' => 'string',
+      'label' => 'Lokalizacja',
+      'widget' => 'string_textfield',
+      'required' => TRUE,
+      'weight' => 4,
+    ],
+    [
+      'machine_name' => 'exchange_language',
+      'type' => 'string',
+      'label' => 'Język nauczania',
+      'widget' => 'string_textfield',
+      'required' => TRUE,
+      'weight' => 5,
+    ],
+    [
+      'machine_name' => 'exchange_start_date',
+      'type' => 'datetime',
+      'label' => 'Data rozpoczęcia wymiany',
+      'widget' => 'datetime_default',
+      'required' => TRUE,
+      'weight' => 6,
+    ],
+    [
+      'machine_name' => 'exchange_end_date',
+      'type' => 'datetime',
+      'label' => 'Data zakończenia wymiany',
+      'widget' => 'datetime_default',
+      'required' => TRUE,
+      'weight' => 7,
+    ],
+    [
+      'machine_name' => 'exchange_requirements',
+      'type' => 'text_long',
+      'label' => 'Wymagania',
+      'widget' => 'text_textarea',
+      'required' => TRUE,
+      'weight' => 8,
+    ],
+    [
+      'machine_name' => 'exchange_description',
+      'type' => 'text_long',
+      'label' => 'Opis wymiany',
+      'widget' => 'text_textarea',
+      'required' => TRUE,
+      'weight' => 9,
+    ],
+  ];
+}
+
+/**
+ * @return void
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function addRepresentativeRole(): void {
+  $rep_role = Role::load('representative');
+  if (!$rep_role) {
+    $rep_role = Role::create([
+      'id' => 'representative',
+      'label' => 'Representative',
+    ]);
+  }
+  $rep_role->grantPermission('manage exchange_application');
+  $rep_role->save();
+}
+
+/**
+ * @return void
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function addStudentRole(): void {
+  $student_role = Role::load('student');
+  if (!$student_role) {
+    $student_role = Role::create([
+      'id' => 'student',
+      'label' => 'Student',
+    ]);
+  }
+  $student_role->grantPermission('manage own exchange_application');
+  $student_role->save();
+}
+
+function studenciaki_create_exchange_application_base_table(): void {
+  $schema = Drupal::database()->schema();
+  if (!$schema->tableExists('exchange_application')) {
+    $schema->createTable('exchange_application', [
+      'fields' => [
+        'id' => [
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ],
+        'uuid' => [
+          'type' => 'varchar',
+          'length' => 128,
+          'not null' => FALSE,
+        ],
+        'langcode' => [
+          'type' => 'varchar',
+          'length' => 32,
+          'not null' => TRUE,
+          'default' => '',
+        ],
+        'revision_id' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ],
+        'name' => [
+          'type' => 'varchar',
+          'length' => 50,
+        ],
+        'firstname' => [
+          'type' => 'varchar',
+          'length' => 50,
+          'not null' => TRUE,
+        ],
+        'lastname' => [
+          'type' => 'varchar',
+          'length' => 50,
+          'not null' => TRUE,
+        ],
+        'current_university' => [
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+        ],
+        'field_of_study' => [
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+        ],
+        'user_id' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ],
+        'created' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ],
+        'changed' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ],
+      ],
+      'primary key' => ['id'],
+      'unique keys' => [
+        'uuid' => ['uuid'],
+      ],
+      'indexes' => [
+        'user_id' => ['user_id'],
+      ],
+    ]);
+  }
+}
+
+function studenciaki_create_exchange_application_revision_table(): void {
+  $schema = Drupal::database()->schema();
+  if (!$schema->tableExists('exchange_application_revision')) {
+    $schema->createTable('exchange_application_revision', [
+      'fields' => [
+        'id' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ],
+        'revision_id' => [
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ],
+        'langcode' => [
+          'type' => 'varchar',
+          'length' => 32,
+          'not null' => TRUE,
+          'default' => '',
+        ],
+        'uuid' => [
+          'type' => 'varchar',
+          'length' => 128,
+          'not null' => FALSE,
+        ],
+        'name' => [
+          'type' => 'varchar',
+          'length' => 50,
+        ],
+        'firstname' => [
+          'type' => 'varchar',
+          'length' => 50,
+          'not null' => TRUE,
+        ],
+        'lastname' => [
+          'type' => 'varchar',
+          'length' => 50,
+          'not null' => TRUE,
+        ],
+        'current_university' => [
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+        ],
+        'field_of_study' => [
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+        ],
+        'user_id' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ],
+        'created' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ],
+        'changed' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ],
+      ],
+      'primary key' => ['revision_id'],
+      'indexes' => [
+        'id' => ['id'],
+        'user_id' => ['user_id'],
+      ],
+    ]);
+  }
+}
+
+function studenciaki_entity_field_access($operation, \Drupal\Core\Field\FieldDefinitionInterface $field_definition, \Drupal\Core\Session\AccountInterface $account, ?\Drupal\Core\Field\FieldItemListInterface $items = NULL) {
+  return AccessResult::allowed();
+}
+
+function studenciaki_entity_insert(EntityInterface $entity) {
+  if ($entity->getEntityTypeId() === 'exchange_application') {
+    /** @var \Drupal\user\UserInterface $user */
+    $user = User::load($entity->getOwnerId());
+    $email = $user->getEmail();
+    $name = $user->getDisplayName();
+    $url = Url::fromRoute('entity.exchange_application.canonical', ['exchange_application' => $entity->id()], ['absolute' => TRUE])
+      ->toString();
+    $exchange_application_service = \Drupal::service('studenciaki.exchange_application_service');
+    $exchange_application_service->sendExchangeApplicationChangedEmail($email, $name, $url, "Twoja aplikacja na wymianę została pomyślnie złożona.");
+  }
+  else {
+    if ($entity->getEntityTypeId() === 'comment') {
+      /** @var \Drupal\comment\CommentInterface $comment */
+      $comment = $entity;
+      $commented_entity = $comment->getCommentedEntity();
+      if ($commented_entity->getEntityTypeId() === 'exchange_application' && $commented_entity->bundle() === 'exchange_application') {
+        $url = Url::fromRoute('entity.exchange_application.canonical', ['exchange_application' => $commented_entity->id()], ['absolute' => TRUE])
+          ->toString();
+        $exchange_application_service = \Drupal::service('studenciaki.exchange_application_service');
+        $user = User::load($commented_entity->getOwnerId());
+        $email = $user->getEmail();
+        $name = $user->getDisplayName();
+        $exchange_application_service->sendExchangeApplicationChangedEmail($email, $name, $url, "Dokonano zmian w aplikacji na wymianę w której uczestniczysz.");
+      }
+    }
+  }
+}
+
+function studenciaki_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  if ($form_id === 'exchange_application_edit_form') {
+    $entity = $form_state->getFormObject()->getEntity();
+
+    if (!$entity->isNew()) {
+      if (isset($form['firstname'])) {
+        $form['firstname']['#disabled'] = TRUE;
+      }
+      if (isset($form['lastname'])) {
+        $form['lastname']['#disabled'] = TRUE;
+      }
+      if (isset($form['field_of_study'])) {
+        $form['field_of_study']['#disabled'] = TRUE;
+      }
+      if (isset($form['current_university'])) {
+        $form['current_university']['#disabled'] = TRUE;
+      }
+    }
+  }
+}

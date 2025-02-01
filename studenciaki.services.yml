@@ -1,0 +1,4 @@
+services:
+  studenciaki.exchange_application_service:
+    class: Drupal\studenciaki\Service\ExchangeApplicationService
+    arguments: [ '@plugin.manager.mail', '@language_manager' ]

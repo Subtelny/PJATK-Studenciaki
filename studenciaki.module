@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * Implements hook_theme().
+ */
+function studenciaki_theme($existing, $type, $theme, $path) {
+  return [
+    'exchange_application_canonical' => [
+      'variables' => [
+        'comments_section' => NULL,
+        'files' => NULL,
+        'exchange_offer' => NULL,
+        'exchange_application' => NULL,
+        'referenced_entity' => NULL,
+        'can_edit_exchange_offer' => FALSE,
+        'referenced_entity_link' => NULL,
+        'entity_id' => NULL,
+      ],
+      'template' => 'exchange-application-canonical',
+    ],
+    'exchange_application_forbidden' => [
+      'variables' => [
+        'entity_id' => NULL,
+      ],
+      'template' => 'exchange-application-forbidden',
+    ],
+    'exchange_application_list' => [
+      'variables' => [
+        'items' => [],
+        'title' => '',
+        'pager' => [],
+      ],
+      'template' => 'exchange-application-list',
+    ],
+    'exchange_application_representative_list' => [
+      'variables' => [
+        'items' => [],
+        'title' => '',
+        'pager' => [],
+      ],
+      'template' => 'exchange-application-representative-list',
+    ],
+    'exchange_offer_list' => [
+      'variables' => [
+        'items' => [],
+        'title' => '',
+        'pager' => [],
+      ],
+      'template' => 'exchange-offer-list',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_mail().
+ */
+function studenciaki_mail($key, &$message, $params) {
+  \Drupal::logger('studenciaki')->notice('hook_mail invoked for key: ' . $key);
+  if ($key == 'exchange_application_changed') {
+    $message['subject'] = t('Zmiana w aplikacji na wymianę');
+    $message['body'][] = t("Witaj,\n@message.\nMożesz zobaczyć zmiany pod adresem: @application_link.", [
+      '@message' => $params['message'],
+      '@application_link' => $params['application_link'],
+    ]);
+  }
+}

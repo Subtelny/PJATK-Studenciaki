@@ -1,0 +1,94 @@
+studenciaki.offers_list:
+  path: '/exchange-offers'
+  defaults:
+    _controller: '\Drupal\studenciaki\Controller\ExchangeController::listOffers'
+    _title: 'Oferty wymian'
+  requirements:
+    _permission: 'access content'
+
+studenciaki.exchange_application.representative_collection:
+  path: '/representative/exchange-application'
+  defaults:
+    _controller: '\Drupal\studenciaki\Controller\ExchangeApplicationRepresentativeController::render'
+    _title: 'Lista Aplikacji (Reprezentant)'
+  requirements:
+    _permission: 'manage exchange_application'
+
+entity.exchange_application.collection:
+  path: '/exchange-application'
+  defaults:
+    _entity_list: 'exchange_application'
+    _title: 'Aplikacje wymian'
+  requirements:
+    _permission: 'manage own exchange_application'
+
+entity.exchange_application.add_form:
+  path: '/exchange-application/add/{offer_id}'
+  defaults:
+    _entity_form: 'exchange_application.add'
+    _title: 'Dodaj aplikację wymiany'
+  requirements:
+    _permission: 'manage own exchange_application'
+
+entity.exchange_application.edit_form:
+  path: '/exchange-application/{exchange_application}/edit'
+  defaults:
+    _entity_form: 'exchange_application.edit'
+    _title: 'Edytuj aplikację wymiany'
+  requirements:
+    _permission: 'manage own exchange_application'
+  options:
+    parameters:
+      exchange_application:
+        type: entity:exchange_application
+
+entity.exchange_application.delete_form:
+  path: '/exchange-application/{exchange_application}/delete'
+  defaults:
+    _entity_form: 'exchange_application.delete'
+    _title: 'Usuń aplikację wymiany'
+  requirements:
+    _permission: 'manage exchange_application'
+  options:
+    parameters:
+      exchange_application:
+        type: entity:exchange_application
+
+entity.exchange_application.canonical:
+  path: '/exchange-application/{exchange_application}'
+  defaults:
+    _entity_view: 'exchange_application.default'
+    _title: 'Aplikacja wymiany'
+  requirements:
+    _permission: 'manage own exchange_application'
+  options:
+    parameters:
+      exchange_application:
+        type: entity:exchange_application
+
+studenciaki.exchange_application.approve:
+  path: '/exchange-application/{exchange_application}/approve'
+  defaults:
+    _controller: '\Drupal\studenciaki\Controller\ExchangeApplicationController::approve'
+    _title: 'Zmień na zaakceptowane'
+  requirements:
+    _permission: 'manage exchange_application'
+    exchange_application: \d+
+
+studenciaki.exchange_application.decline:
+  path: '/exchange-application/{exchange_application}/decline'
+  defaults:
+    _controller: '\Drupal\studenciaki\Controller\ExchangeApplicationController::decline'
+    _title: 'Zmień na odrzucone'
+  requirements:
+    _permission: 'manage exchange_application'
+    exchange_application: \d+
+
+studenciaki.exchange_application.waiting:
+  path: '/exchange-application/{exchange_application}/waiting'
+  defaults:
+    _controller: '\Drupal\studenciaki\Controller\ExchangeApplicationController::waiting'
+    _title: 'Zmień na oczekujące'
+  requirements:
+    _permission: 'manage exchange_applications'
+    exchange_application: \d+

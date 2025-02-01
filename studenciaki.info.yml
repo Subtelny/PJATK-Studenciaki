@@ -1,0 +1,8 @@
+name: Studenciaki
+type: module
+description: "Custom module zapewniający workflow wymian studenckich (tworzenie ofert, aplikowanie, zarządzanie)."
+core_version_requirement: ">=9"
+package: Custom
+dependencies:
+  - drupal:comment
+  - drupal:system
